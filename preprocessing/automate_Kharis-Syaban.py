@@ -1,30 +1,45 @@
+#!/usr/bin/env python3
+
 import argparse
 import os
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
 
 
-# =====================================================
+# ======================================================
 # LOAD DATASET
-# =====================================================
+# ======================================================
 
-def load_dataset(path):
-    print(f"Memuat dataset: {path}")
-    return pd.read_csv(path)
+def load_dataset(file_path):
+    """Memuat dataset dari file CSV."""
+    print(f"\n[INFO] Membaca dataset: {file_path}")
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Dataset tidak ditemukan: {file_path}")
+
+    df = pd.read_csv(file_path)
+
+    print(f"[INFO] Dataset berhasil dimuat ({df.shape[0]} baris, {df.shape[1]} kolom)")
+
+    return df
 
 
-# =====================================================
-# EDA
-# =====================================================
+# ======================================================
+# EXPLORATORY DATA ANALYSIS (EDA)
+# ======================================================
 
 def data_information(df):
 
-    print("\n===== INFORMASI DATA =====")
+    print("\n========== INFORMASI DATA ==========")
 
-    print("Shape :", df.shape)
+    print("\nShape Dataset")
+    print(df.shape)
+
+    print("\nNama Kolom")
+    print(df.columns.tolist())
 
     print("\nTipe Data")
     print(df.dtypes)
@@ -32,102 +47,124 @@ def data_information(df):
     print("\nMissing Value")
     print(df.isnull().sum())
 
-    print("\nDuplicate")
+    print("\nJumlah Data Duplikat")
     print(df.duplicated().sum())
 
 
-# =====================================================
+# ======================================================
 # HANDLE MISSING VALUE
-# =====================================================
+# ======================================================
 
-def handle_missing(df):
+def handle_missing_value(df):
 
-    num_cols = df.select_dtypes(include=np.number).columns
-    cat_cols = df.select_dtypes(exclude=np.number).columns
+    print("\n[INFO] Menangani Missing Value...")
 
-    for col in num_cols:
+    numeric_cols = df.select_dtypes(include=np.number).columns
+    categorical_cols = df.select_dtypes(exclude=np.number).columns
+
+    for col in numeric_cols:
         df[col] = df[col].fillna(df[col].mean())
 
-    for col in cat_cols:
+    for col in categorical_cols:
         df[col] = df[col].fillna(df[col].mode()[0])
 
     return df
 
 
-# =====================================================
+# ======================================================
 # REMOVE DUPLICATE
-# =====================================================
+# ======================================================
 
 def remove_duplicate(df):
-    return df.drop_duplicates()
+
+    before = len(df)
+
+    df = df.drop_duplicates()
+
+    after = len(df)
+
+    print(f"[INFO] Menghapus {before-after} data duplikat.")
+
+    return df
 
 
-# =====================================================
-# ENCODING
-# =====================================================
+# ======================================================
+# ENCODE CATEGORICAL FEATURES
+# ======================================================
 
-def encode_data(df):
+def encode_categorical(df):
+
+    print("[INFO] Encoding fitur kategorikal...")
 
     encoder = LabelEncoder()
 
-    object_cols = df.select_dtypes(include="object").columns
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns
 
-    for col in object_cols:
+    for col in categorical_cols:
         df[col] = encoder.fit_transform(df[col].astype(str))
 
     return df
 
 
-# =====================================================
-# SCALING
-# =====================================================
+# ======================================================
+# FEATURE SCALING
+# ======================================================
 
-def scaling(df):
+def feature_scaling(df):
+
+    print("[INFO] Melakukan Standard Scaling...")
+
+    target_candidates = [
+        "Outcome",
+        "target",
+        "Target",
+        "Class",
+        "label",
+        "Label"
+    ]
+
+    target_column = None
+
+    for col in target_candidates:
+        if col in df.columns:
+            target_column = col
+            break
 
     scaler = StandardScaler()
 
-    df = pd.DataFrame(
-        scaler.fit_transform(df),
-        columns=df.columns
-    )
+    if target_column is not None:
+
+        feature_cols = df.drop(columns=[target_column]).columns
+
+        df[feature_cols] = scaler.fit_transform(df[feature_cols])
+
+    else:
+
+        df[df.columns] = scaler.fit_transform(df)
 
     return df
 
 
-# =====================================================
-# SPLIT
-# =====================================================
+# ======================================================
+# SAVE DATASET
+# ======================================================
 
-def split_dataset(df):
+def save_dataset(df, output_path):
 
-    train, test = train_test_split(
-        df,
-        test_size=0.2,
-        random_state=42,
-        shuffle=True
-    )
+    folder = os.path.dirname(output_path)
 
-    return train, test
+    if folder != "":
+        os.makedirs(folder, exist_ok=True)
 
+    df.to_csv(output_path, index=False)
 
-# =====================================================
-# SAVE
-# =====================================================
-
-def save_dataset(train, test, output_dir):
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    train.to_csv(os.path.join(output_dir, "train.csv"), index=False)
-    test.to_csv(os.path.join(output_dir, "test.csv"), index=False)
-
-    print("\nDataset preprocessing berhasil disimpan pada:")
-    print(output_dir)
+    print(f"\n[INFO] Dataset hasil preprocessing disimpan pada:")
+    print(output_path)
 
 
-# =====================================================
+# ======================================================
 # MAIN
-# =====================================================
+# ======================================================
 
 def main():
 
@@ -136,38 +173,34 @@ def main():
     )
 
     parser.add_argument(
-        "dataset",
-        help="Lokasi dataset CSV"
+        "input",
+        help="Lokasi dataset input (.csv)"
     )
 
     parser.add_argument(
-        "-o",
-        "--output",
-        default="dataset_preprocessing",
-        help="Folder output preprocessing"
+        "output",
+        help="Lokasi dataset hasil preprocessing (.csv)"
     )
 
     args = parser.parse_args()
 
-    # Load dataset
-    df = load_dataset(args.dataset)
+    df = load_dataset(args.input)
 
-    # EDA
     data_information(df)
 
-    # Preprocessing
-    df = handle_missing(df)
+    df = handle_missing_value(df)
+
     df = remove_duplicate(df)
-    df = encode_data(df)
-    df = scaling(df)
 
-    # Split dataset
-    train, test = split_dataset(df)
+    df = encode_categorical(df)
 
-    # Save
-    save_dataset(train, test, args.output)
+    df = feature_scaling(df)
 
-    print("\nPreprocessing selesai.")
+    save_dataset(df, args.output)
+
+    print("\n===================================")
+    print("PREPROCESSING BERHASIL")
+    print("===================================")
 
 
 if __name__ == "__main__":
