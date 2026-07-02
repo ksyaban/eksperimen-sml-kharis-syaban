@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import os
 import numpy as np
 import pandas as pd
@@ -10,11 +9,36 @@ from sklearn.preprocessing import StandardScaler
 
 
 # ======================================================
+# PATH DATASET
+# ======================================================
+
+# Folder tempat file python ini berada
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Folder project (parent dari preprocessing)
+PROJECT_DIR = os.path.dirname(CURRENT_DIR)
+
+# Dataset input
+INPUT_DATASET = os.path.join(
+    PROJECT_DIR,
+    "dataset",
+    "diabetes_data.csv"
+)
+
+# Dataset output
+OUTPUT_DATASET = os.path.join(
+    CURRENT_DIR,
+    "preprocessed_diabetes_data.csv"
+)
+
+
+# ======================================================
 # LOAD DATASET
 # ======================================================
 
 def load_dataset(file_path):
     """Memuat dataset dari file CSV."""
+
     print(f"\n[INFO] Membaca dataset: {file_path}")
 
     if not os.path.exists(file_path):
@@ -98,7 +122,9 @@ def encode_categorical(df):
 
     encoder = LabelEncoder()
 
-    categorical_cols = df.select_dtypes(include=["object", "category"]).columns
+    categorical_cols = df.select_dtypes(
+        include=["object", "category"]
+    ).columns
 
     for col in categorical_cols:
         df[col] = encoder.fit_transform(df[col].astype(str))
@@ -151,14 +177,11 @@ def feature_scaling(df):
 
 def save_dataset(df, output_path):
 
-    folder = os.path.dirname(output_path)
-
-    if folder != "":
-        os.makedirs(folder, exist_ok=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     df.to_csv(output_path, index=False)
 
-    print(f"\n[INFO] Dataset hasil preprocessing disimpan pada:")
+    print("\n[INFO] Dataset hasil preprocessing disimpan pada:")
     print(output_path)
 
 
@@ -168,23 +191,11 @@ def save_dataset(df, output_path):
 
 def main():
 
-    parser = argparse.ArgumentParser(
-        description="Automasi Data Preprocessing"
-    )
+    print("===================================")
+    print(" AUTOMASI DATA PREPROCESSING ")
+    print("===================================")
 
-    parser.add_argument(
-        "input",
-        help="Lokasi dataset input (.csv)"
-    )
-
-    parser.add_argument(
-        "output",
-        help="Lokasi dataset hasil preprocessing (.csv)"
-    )
-
-    args = parser.parse_args()
-
-    df = load_dataset(args.input)
+    df = load_dataset(INPUT_DATASET)
 
     data_information(df)
 
@@ -196,10 +207,10 @@ def main():
 
     df = feature_scaling(df)
 
-    save_dataset(df, args.output)
+    save_dataset(df, OUTPUT_DATASET)
 
     print("\n===================================")
-    print("PREPROCESSING BERHASIL")
+    print(" PREPROCESSING BERHASIL ")
     print("===================================")
 
 

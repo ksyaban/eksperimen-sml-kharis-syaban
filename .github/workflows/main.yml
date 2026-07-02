@@ -29,9 +29,7 @@ jobs:
 
       - name: Run Preprocessing
         run: |
-          python preprocessing/automate_kharis-syaban.py \
-            dataset/diabetes_data.csv \
-            preprocessing/preprocessed_diabetes_data.csv
+          run: python preprocessing/automate_preprocessing.py
 
       - name: Verify Output
         run: |
